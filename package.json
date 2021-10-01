@@ -1,0 +1,38 @@
+{
+  "name": "@freely/package-auth-express",
+  "version": "1.0.0",
+  "license": "UNLICENSED",
+  "main": "index.js",
+  "scripts": {
+    "format": "prettier --write \"src/**/*.js\"",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^8.5.1",
+    "jwks-rsa": "^2.0.4"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.15.5",
+    "@babel/plugin-transform-modules-commonjs": "^7.15.4",
+    "jest": "^27.0.6",
+    "nock": "^13.1.1",
+    "node-jose": "^2.0.0",
+    "node-mocks-http": "^1.10.1",
+    "prettier": "^2.3.2"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.js$",
+    "collectCoverageFrom": [
+      "**/*.js"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  }
+}
