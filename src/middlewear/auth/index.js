@@ -14,7 +14,7 @@ export default class JwtAuthenticator {
     return keys;
   }
 
-  #verifyClaims(decodedToken) {
+  #validateClaims(decodedToken) {
     const settings = [{
       key: 'exp',
       isValid: (arg) => Math.round(Date.now() / 1000) < arg
@@ -26,7 +26,7 @@ export default class JwtAuthenticator {
       isValid: (arg) => arg === this.CLIENT_ID,
     }];
 
-    return settings.some((setting) => setting.isValid(decodedToken[setting.key]));
+    return settings.every((setting) => setting.isValid(decodedToken[setting.key]));
   }
 
   #decodeTokenHeader(token) {
@@ -36,26 +36,26 @@ export default class JwtAuthenticator {
     return JSON.parse(text);
   }
 
-  #verify(err, decodedToken) {
+  #validateToken(err, decodedToken) {
     if (err) {
       return [false];
     };
 
-    const areClaimsValid = this.#verifyClaims(decodedToken);
-    if (!areClaimsValid) {
+    const hasValidClaims = this.#validateClaims(decodedToken);
+    if (!hasValidClaims) {
       return [false];
     }
 
     return [true, decodedToken];
   }
 
-  async #decodeTokenSignature(token) {
+  async #decodeToken(token) {
     if (!token) return [false];
     const keys = await this.#fetchKeys();
     const { kid, alg } = this.#decodeTokenHeader(token);
     const key = keys.find(({ kid: keyId }) => kid === keyId);
     const pem = jwkToPem(key);
-    return jwt.verify(token, pem, { algorithms: [alg] }, this.#verify.bind(this));
+    return jwt.verify(token, pem, { algorithms: [alg] }, this.#validateToken.bind(this));
   }
 
   async authenticateToken(req, res, next) {
@@ -65,7 +65,7 @@ export default class JwtAuthenticator {
       }
     } = req;
 
-    const [isValid, decodedToken] = await this.#decodeTokenSignature(authorizationinfo);
+    const [isValid, decodedToken] = await this.#decodeToken(authorizationinfo);
     
     if (!isValid) {
       res.status(401).send();

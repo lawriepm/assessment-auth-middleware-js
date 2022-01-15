@@ -10,12 +10,13 @@ const options = {
   algorithms: "RS256"
 };
 const currentTime = Math.round(Date.now() / 1000);
-const claims = {
+const claims = (optionOverides = {}) => ({
   sub: "foo",
   iss: options.issuer,
   aud: options.audience,
-  exp: currentTime + 10
-};
+  exp: currentTime + 10,
+  ...optionOverides,
+});
 
 let res;
 let next;
@@ -31,8 +32,7 @@ beforeAll(async () => {
 });
 
 describe("A request with a valid access token", () => {
-  beforeEach(async () => {
-    const token = await tokenGenerator.createSignedJWT(claims);
+  function setArgs(token) {
     res = createResponse();
     next = jest.fn();
     req = createRequest({
@@ -40,16 +40,54 @@ describe("A request with a valid access token", () => {
         authorizationinfo: token
       }
     });
+  }
 
-    await authorise(options)(req, res, next);
+  describe('when claims are valid', () => {
+    beforeEach(async () => {
+      const token = await tokenGenerator.createSignedJWT(claims());
+      setArgs(token);
+      await authorise(options)(req, res, next);
+    });
+
+    test("should add a user object containing the token claims to the request", () => {
+      expect(req).toHaveProperty("user", claims());
+    });
+  
+    test("call next()", () => {
+      expect(next).toHaveBeenCalled();
+    });
   });
-
-  test("should add a user object containing the token claims to the request", () => {
-    expect(req).toHaveProperty("user", claims);
-  });
-
-  test("call next()", () => {
-    expect(next).toHaveBeenCalled();
+  
+  [
+    {
+      description: 'when aud is invalid',
+      claims: { aud: 'null' },
+    }, {
+      description: 'when expiration is invalid',
+      claims: { exp: currentTime - 50 },
+    }, {
+      description: 'when iss is invalid',
+      claims: { iss: 'https://test.com' },
+  },
+].forEach(({
+    description,
+    claims: claimMock,
+  }) => {
+    describe(description, () => {
+      beforeEach(async () => {
+        const token = await tokenGenerator.createSignedJWT(claims(claimMock));
+        setArgs(token);
+        await authorise(options)(req, res, next);
+      });
+      
+      test("should not call next()", () => {
+        expect(next).not.toHaveBeenCalled();
+      });
+      
+      test("should send a 401 response", () => {
+        expect(res.statusCode).toEqual(401);
+      });
+    });
   });
 });
 
