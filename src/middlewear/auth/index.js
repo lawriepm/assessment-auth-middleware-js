@@ -36,7 +36,7 @@ export default class JwtAuthenticator {
     return JSON.parse(text);
   }
 
-  #validateToken(err, decodedToken) {
+  #verifySignatureAndClaims(err, decodedToken) {
     if (err) {
       return [false];
     };
@@ -55,7 +55,7 @@ export default class JwtAuthenticator {
     const { kid, alg } = this.#decodeTokenHeader(token);
     const key = keys.find(({ kid: keyId }) => kid === keyId);
     const pem = jwkToPem(key);
-    return jwt.verify(token, pem, { algorithms: [alg] }, this.#validateToken.bind(this));
+    return jwt.verify(token, pem, { algorithms: [alg] }, this.#verifySignatureAndClaims.bind(this));
   }
 
   async authenticateToken(req, res, next) {
