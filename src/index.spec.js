@@ -41,3 +41,28 @@ describe("A request with a valid access token", () => {
     expect(req).toHaveProperty("user", claims);
   });
 });
+
+describe("A request with an invalid access token", () => {
+  let res;
+  let next;
+  let req;
+
+  beforeEach(async () => {
+    res = createResponse();
+    next = jest.fn();
+    req = createRequest({
+      headers: {
+        authorizationinfo: null
+      }
+    });
+    await authorise(options)(req, res, next);
+  });
+
+  test("should not call next()", () => {
+    expect(next).not.toHaveBeenCalled();
+  });
+  
+  test("should send a 401 response", () => {
+    expect(res.statusCode).toEqual(401);
+  });
+});
