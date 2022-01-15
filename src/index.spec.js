@@ -17,6 +17,10 @@ const claims = {
   exp: currentTime + 10
 };
 
+let res;
+let next;
+let req;
+
 beforeAll(async () => {
   await tokenGenerator.init();
 
@@ -27,26 +31,29 @@ beforeAll(async () => {
 });
 
 describe("A request with a valid access token", () => {
-  test("should add a user object containing the token claims to the request", async () => {
-    const res = createResponse();
-    const next = jest.fn();
+  beforeEach(async () => {
     const token = await tokenGenerator.createSignedJWT(claims);
-    const req = createRequest({
+    res = createResponse();
+    next = jest.fn();
+    req = createRequest({
       headers: {
         authorizationinfo: token
       }
     });
 
     await authorise(options)(req, res, next);
+  });
+
+  test("should add a user object containing the token claims to the request", () => {
     expect(req).toHaveProperty("user", claims);
+  });
+
+  test("call next()", () => {
+    expect(next).toHaveBeenCalled();
   });
 });
 
 describe("A request with an invalid access token", () => {
-  let res;
-  let next;
-  let req;
-
   beforeEach(async () => {
     res = createResponse();
     next = jest.fn();
