@@ -1,4 +1,4 @@
-import JwtAuthenticator from './middlewear/auth';
+import { JwtAuthenticator } from './middlewear';
 const authenticator = new JwtAuthenticator()
 
 const authorize =
