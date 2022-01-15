@@ -59,20 +59,24 @@ export default class JwtAuthenticator {
   }
 
   async authenticateToken(req, res, next) {
-    const {
-      headers: {
-        authorizationinfo,
+    try {
+      const {
+        headers: {
+          authorizationinfo,
+        }
+      } = req;
+      
+      const [isValid, decodedToken] = await this.#decodeToken(authorizationinfo);
+      
+      if (!isValid) {
+        res.status(401).send();
+        return;
       }
-    } = req;
-
-    const [isValid, decodedToken] = await this.#decodeToken(authorizationinfo);
-    
-    if (!isValid) {
-      res.status(401).send();
-      return;
+      
+      req.user = decodedToken;
+      next();
+    } catch (error) {
+      res.status(500).send();
     }
-
-    req.user = decodedToken;
-    next();
   }
 }
