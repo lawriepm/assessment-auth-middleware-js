@@ -7,17 +7,18 @@
     "format": "prettier --write \"src/**/*.js\"",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "lint": "eslint '**/*.js'"
   },
   "dependencies": {
     "axios": "^0.24.0",
     "jsonwebtoken": "^8.5.1",
-    "jwk-to-pem": "^2.0.5",
-    "jwks-rsa": "^2.0.4"
+    "jwk-to-pem": "^2.0.5"
   },
   "devDependencies": {
     "@babel/core": "^7.15.5",
     "@babel/plugin-transform-modules-commonjs": "^7.15.4",
+    "eslint": "^8.7.0",
     "jest": "^27.0.6",
     "nock": "^13.1.1",
     "node-jose": "^2.0.0",
