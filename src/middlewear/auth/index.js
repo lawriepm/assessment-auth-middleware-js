@@ -2,60 +2,66 @@ import axios from 'axios';
 import jwt from "jsonwebtoken";
 import jwkToPem from 'jwk-to-pem';
 
+class Error {
+  constructor(status) {
+    this.status = status;
+  }
+
+  getStatus() {
+    return status;
+  }
+}
+
+class AuthenticationError extends Error {
+  constructor() {
+    super(401);
+  }
+}
+
+class InternalServerError extends Error {
+  constructor() {
+    super(500);
+  }
+}
 
 export default class JwtAuthenticator {
   constructor() {
-    this.USER_POOL_ID = 'http://issuer.com'; // mock value for verifying claims
-    this.CLIENT_ID = 'audience'; // mock value for verifying claims
+    this.USER_POOL = 'http://issuer.com'; // mock value for verifying claims real value may look like https://cognito-idp.us-east-1.amazonaws.com/<userpoolID>
   }
 
   async #fetchKeys() {
-    const { data: { keys } } = await axios.get(`${this.USER_POOL_ID}/.well-known/jwks.json`);
+    const { data: { keys } } = await axios.get(`${this.USER_POOL}/.well-known/jwks.json`);
     return keys;
   }
 
-  #validateClaims(decodedToken) {
-    const settings = [{
-      key: 'exp',
-      isValid: (arg) => Math.round(Date.now() / 1000) < arg
-    }, {
-      key: 'iss',
-      isValid: (arg) => arg.endsWith(this.USER_POOL_ID)
-    }, {
-      key: 'aud',
-      isValid: (arg) => arg === this.CLIENT_ID,
-    }];
-
-    return settings.every((setting) => setting.isValid(decodedToken[setting.key]));
-  }
-
-  #decodeTokenHeader(token) {
-    const [headerEncoded] = token.split('.');
-    const buff = new Buffer(headerEncoded, 'base64');
-    const text = buff.toString('ascii');
-    return JSON.parse(text);
-  }
-
-  #verifySignatureAndClaims(err, decodedToken) {
+  #verifySignature(err, decodedToken) {
     if (err) {
       return [false];
     };
-
-    const hasValidClaims = this.#validateClaims(decodedToken);
-    if (!hasValidClaims) {
-      return [false];
-    }
 
     return [true, decodedToken];
   }
 
   async #decodeToken(token) {
     if (!token) return [false];
-    const keys = await this.#fetchKeys();
-    const { kid, alg } = this.#decodeTokenHeader(token);
+    
+    const decodedToken = jwt.decode(token, { complete: true });
+    if (!decodedToken) return [false];
+    
+    const { header: { kid, alg }, payload } = decodedToken;
+    
+    const keys = await this.#fetchKeys(payload.iss);
     const key = keys.find(({ kid: keyId }) => kid === keyId);
     const pem = jwkToPem(key);
-    return jwt.verify(token, pem, { algorithms: [alg] }, this.#verifySignatureAndClaims.bind(this));
+
+    const options = {
+      algorithms: [alg],
+      issuer: payload.iss,
+      audience: payload.aud,
+      expiresIn: payload.exp,
+    }
+    
+    return jwt.verify(token, pem, options, this.#verifySignature.bind(this));
   }
 
   async authenticateToken(req, res, next) {
