@@ -50,7 +50,7 @@ export default class JwtAuthenticator {
     
     const { header: { kid, alg }, payload } = decodedToken;
     
-    const keys = await this.#fetchKeys(payload.iss);
+    const keys = await this.#fetchKeys();
     const key = keys.find(({ kid: keyId }) => kid === keyId);
     const pem = jwkToPem(key);
 
