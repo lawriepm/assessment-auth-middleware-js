@@ -57,38 +57,6 @@ describe("A request with a valid access token", () => {
       expect(next).toHaveBeenCalled();
     });
   });
-  
-  [
-    {
-      description: 'when aud is invalid',
-      claims: { aud: 'null' },
-    }, {
-      description: 'when expiration is invalid',
-      claims: { exp: currentTime - 50 },
-    }, {
-      description: 'when iss is invalid',
-      claims: { iss: 'https://test.com' },
-  },
-].forEach(({
-    description,
-    claims: claimMock,
-  }) => {
-    describe(description, () => {
-      beforeEach(async () => {
-        const token = await tokenGenerator.createSignedJWT(claims(claimMock));
-        setArgs(token);
-        await authorise(options)(req, res, next);
-      });
-      
-      test("should not call next()", () => {
-        expect(next).not.toHaveBeenCalled();
-      });
-      
-      test("should send a 401 response", () => {
-        expect(res.statusCode).toEqual(401);
-      });
-    });
-  });
 });
 
 describe("A request with an invalid access token", () => {
