@@ -1,32 +1,10 @@
-import axios from 'axios';
+import axios from "axios";
 import jwt from "jsonwebtoken";
-import jwkToPem from 'jwk-to-pem';
-
-class Error {
-  constructor(status) {
-    this.status = status;
-  }
-
-  getStatus() {
-    return status;
-  }
-}
-
-class AuthenticationError extends Error {
-  constructor() {
-    super(401);
-  }
-}
-
-class InternalServerError extends Error {
-  constructor() {
-    super(500);
-  }
-}
+import jwkToPem from "jwk-to-pem";
 
 export default class JwtAuthenticator {
   constructor() {
-    this.USER_POOL = 'http://issuer.com'; // mock value for verifying claims real value may look like https://cognito-idp.us-east-1.amazonaws.com/<userpoolID>
+    this.USER_POOL = "http://issuer.com"; // mock value for verifying claims real value may look like https://cognito-idp.us-east-1.amazonaws.com/<userpoolID>
   }
 
   async #fetchKeys() {

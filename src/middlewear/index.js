@@ -1,2 +1,2 @@
-import JwtAuthenticator from './auth';
+import JwtAuthenticator from "./auth";
 export { JwtAuthenticator };

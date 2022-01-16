@@ -32,7 +32,8 @@ beforeAll(async () => {
 });
 
 describe("A request with a valid access token", () => {
-  function setArgs(token) {
+  beforeEach(async () => {
+    const token = await tokenGenerator.createSignedJWT(claims());
     res = createResponse();
     next = jest.fn();
     req = createRequest({
@@ -40,22 +41,15 @@ describe("A request with a valid access token", () => {
         authorizationinfo: token
       }
     });
-  }
+    await authorise(options)(req, res, next);
+  });
 
-  describe('when claims are valid', () => {
-    beforeEach(async () => {
-      const token = await tokenGenerator.createSignedJWT(claims());
-      setArgs(token);
-      await authorise(options)(req, res, next);
-    });
+  test("should add a user object containing the token claims to the request", () => {
+    expect(req).toHaveProperty("user", claims());
+  });
 
-    test("should add a user object containing the token claims to the request", () => {
-      expect(req).toHaveProperty("user", claims());
-    });
-  
-    test("call next()", () => {
-      expect(next).toHaveBeenCalled();
-    });
+  test("call next()", () => {
+    expect(next).toHaveBeenCalled();
   });
 });
 

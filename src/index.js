@@ -1,8 +1,8 @@
-import { JwtAuthenticator } from './middlewear';
+import { JwtAuthenticator } from "./middlewear";
 const authenticator = new JwtAuthenticator()
 
 const authorize =
-  (options) =>
+  () =>
     async (
       req,
       res,
