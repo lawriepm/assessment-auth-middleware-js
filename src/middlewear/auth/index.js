@@ -1,6 +1,7 @@
 import axios from "axios";
 import jwt from "jsonwebtoken";
 import jwkToPem from "jwk-to-pem";
+import { AuthenticationError } from "./error";
 
 export default class JwtAuthenticator {
   constructor() {
@@ -12,19 +13,23 @@ export default class JwtAuthenticator {
     return keys;
   }
 
-  #verifySignature(err, decodedToken) {
-    if (err) {
-      return [false];
-    };
+  #verifySignature(token, pem, options) {
+    return new Promise((resolve, reject) => {
+      jwt.verify(token, pem, options, (err, decodedToken) => {
+        if (err) {
+          return reject(new AuthenticationError());
+        };
 
-    return [true, decodedToken];
+        resolve(decodedToken);
+      })
+    })
   }
 
   async #decodeToken(token) {
-    if (!token) return [false];
+    if (!token) throw new AuthenticationError();
     
     const decodedToken = jwt.decode(token, { complete: true });
-    if (!decodedToken) return [false];
+    if (!decodedToken) throw new AuthenticationError();
     
     const { header: { kid, alg }, payload } = decodedToken;
     
@@ -39,7 +44,7 @@ export default class JwtAuthenticator {
       expiresIn: payload.exp,
     }
     
-    return jwt.verify(token, pem, options, this.#verifySignature.bind(this));
+    return this.#verifySignature(token, pem, options);
   }
 
   async authenticateToken(req, res, next) {
@@ -50,17 +55,13 @@ export default class JwtAuthenticator {
         }
       } = req;
       
-      const [isValid, decodedToken] = await this.#decodeToken(authorizationinfo);
-      
-      if (!isValid) {
-        res.status(401).send();
-        return;
-      }
+      const decodedToken = await this.#decodeToken(authorizationinfo);
       
       req.user = decodedToken;
       next();
     } catch (error) {
-      res.status(500).send();
+      const status = error.getStatus?.() || 500;
+      res.status(status).send();
     }
   }
 }
