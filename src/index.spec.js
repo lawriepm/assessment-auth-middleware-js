@@ -10,13 +10,12 @@ const options = {
   algorithms: "RS256"
 };
 const currentTime = Math.round(Date.now() / 1000);
-const claims = (optionOverides = {}) => ({
+const claims = {
   sub: "foo",
   iss: options.issuer,
   aud: options.audience,
   exp: currentTime + 10,
-  ...optionOverides,
-});
+};
 
 let res;
 let next;
@@ -33,7 +32,7 @@ beforeAll(async () => {
 
 describe("A request with a valid access token", () => {
   beforeEach(async () => {
-    const token = await tokenGenerator.createSignedJWT(claims());
+    const token = await tokenGenerator.createSignedJWT(claims);
     res = createResponse();
     next = jest.fn();
     req = createRequest({
@@ -45,7 +44,7 @@ describe("A request with a valid access token", () => {
   });
 
   test("should add a user object containing the token claims to the request", () => {
-    expect(req).toHaveProperty("user", claims());
+    expect(req).toHaveProperty("user", claims);
   });
 
   test("call next()", () => {
