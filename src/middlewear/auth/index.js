@@ -21,8 +21,8 @@ export default class JwtAuthenticator {
         };
 
         resolve(decodedToken);
-      })
-    })
+      });
+    });
   }
 
   async #decodeToken(token) {
