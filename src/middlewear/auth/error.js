@@ -17,5 +17,4 @@ class AuthenticationError extends CustomError {
   }
 }
 
-export default { AuthenticationError };
-
+export default AuthenticationError;

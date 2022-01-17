@@ -1,7 +1,7 @@
 import axios from "axios";
 import jwt from "jsonwebtoken";
 import jwkToPem from "jwk-to-pem";
-import { AuthenticationError } from "./error";
+import AuthenticationError from "./error";
 
 export default class JwtAuthenticator {
   constructor() {
