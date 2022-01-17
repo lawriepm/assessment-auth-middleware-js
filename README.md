@@ -17,3 +17,12 @@ We intend to use the `verify` function of the `jsonwebtoken` NPM package to do m
 HINT: you might be best using the alternative `decode` function provided by `jsonwebtoken` to get started (https://www.npmjs.com/package/jsonwebtoken#jwtdecodetoken--options).
 
 A failing "happy path" test has already been set up for you, including a mock response for the request to retrieve the public key used to verify the token signature.
+
+# Explanation
+
+```JwtAuthenticator``` (found in ```src/middlewear/auth/index.js```) exposes the method authenticateToken(). This leverages the ```jsonwebtoken``` package to check the tokens: 1) header, 2) payload, 3) signature. When a token is valid the method calls next() (directing to the next piece of middleware or controller) and adds the decodedToken to the ```req``` object. When a token is invalid it returns either a 401 or 500 status code (Custom error classes can be easily added to ```src/middlewear/auth/error.js```.
+
+To validate the process described above works for invalid users, two new tests have been added to the test suite. The existing test has been extended to assert ```next()``` is called for a valid token.
+
+Eslint was added with basic rules to make the new and existing code consistent.
+
