@@ -20,7 +20,7 @@ A failing "happy path" test has already been set up for you, including a mock re
 
 # Explanation
 
-```JwtAuthenticator``` (found in ```src/middlewear/auth/index.js```) exposes the method authenticateToken(). This leverages the ```jsonwebtoken``` package to check the tokens: 1) header, 2) payload, 3) signature. When a token is valid the method calls next() (directing to the next piece of middleware or controller) and adds the decodedToken to the ```req``` object. When a token is invalid it returns either a 401 or 500 status code (Custom error classes can be easily added to ```src/middlewear/auth/error.js```.
+```JwtAuthenticator``` (found in ```src/middlewear/auth/index.js```) exposes the method ```authenticateToken()```. This leverages the ```jsonwebtoken``` package to check the tokens: 1) header, 2) payload, 3) signature. When a token is valid the method calls ```next()``` (directing to the next piece of middleware or controller) and adds the decodedToken to the ```req``` object. When a token is invalid it returns either a 401 or 500 status code (custom error classes can be easily added to ```src/middlewear/auth/error.js```).
 
 To validate the process described above works for invalid users, two new tests have been added to the test suite. The existing test has been extended to assert ```next()``` is called for a valid token.
 
