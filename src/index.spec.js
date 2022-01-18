@@ -23,6 +23,31 @@ let res;
 let next;
 let req;
 
+function setArgs(token) {
+  res = createResponse();
+  next = jest.fn();
+  req = createRequest({
+    headers: {
+      authorizationinfo: token
+    }
+  });
+}
+
+function runInvalidTokenTests(messageAssertion) {
+  test("should not call next()", () => {
+    expect(next).not.toHaveBeenCalled();
+  });
+  
+  test("should send a 401 response", () => {
+    expect(res.statusCode).toEqual(401);
+  });
+
+  test(`should send message ${messageAssertion}`, () => {
+    const { message } = res._getData();
+    expect(message).toEqual(messageAssertion);
+  }); 
+}
+
 beforeAll(async () => {
   await tokenGenerator.init();
 
@@ -36,13 +61,7 @@ describe("A request with a valid access token", () => {
   describe("with valid claims", () => {
     beforeEach(async () => {
       const token = await tokenGenerator.createSignedJWT(claims());
-      res = createResponse();
-      next = jest.fn();
-      req = createRequest({
-        headers: {
-          authorizationinfo: token
-        }
-      });
+      setArgs(token);
       await authorise(options)(req, res, next);
     });
 
@@ -85,80 +104,29 @@ describe("A request with a valid access token", () => {
     describe(`and an invalid ${key} claim`, () => {
       beforeEach(async () => {
         const token = await tokenGenerator.createSignedJWT(claims({ [key]: value }));
-        res = createResponse();
-        next = jest.fn();
-        req = createRequest({
-          headers: {
-            authorizationinfo: token
-          }
-        });
+        setArgs(token);
         await authorise(options)(req, res, next);
       });
 
-      test("should not call next()", () => {
-        expect(next).not.toHaveBeenCalled();
-      });
-
-      test("should send a 401 response", () => {
-        expect(res.statusCode).toEqual(401);
-      });
-      
-      test(`should send message ${error}`, () => {
-        const { message } = res._getData();
-        expect(message).toEqual(error);
-      });
+      runInvalidTokenTests(error);
     });
   });
 });
 
 describe("A request with a null token", () => {
   beforeEach(async () => {
-    res = createResponse();
-    next = jest.fn();
-    req = createRequest({
-      headers: {
-        authorizationinfo: null
-      }
-    });
+    setArgs(null);
     await authorise(options)(req, res, next);
   });
-
-  test("should not call next()", () => {
-    expect(next).not.toHaveBeenCalled();
-  });
   
-  test("should send a 401 response", () => {
-    expect(res.statusCode).toEqual(401);
-  });
-
-  test("should send message \"no jwt provided.\"", () => {
-    const { message } = res._getData();
-    expect(message).toEqual("no jwt provided.");
-  });
+  runInvalidTokenTests("no jwt provided.");
 });
 
 describe("A request with an invalid access token", () => {
   beforeEach(async () => {
-    res = createResponse();
-    next = jest.fn();
-    req = createRequest({
-      headers: {
-        authorizationinfo: 'this.is.an.invalid.token'
-      }
-    });
+    setArgs("this.is.an.invalid.token");
     await authorise(options)(req, res, next);
   });
 
-  test("should not call next()", () => {
-    expect(next).not.toHaveBeenCalled();
-  });
-  
-  test("should send a 401 response", () => {
-    expect(res.statusCode).toEqual(401);
-  });
-
-  test("should send message \"jwt payload or header invalid.\"", () => {
-    const { message } = res._getData();
-    expect(message).toEqual("jwt payload or header invalid.");
-  });
+  runInvalidTokenTests("jwt payload or header invalid.");
 });
