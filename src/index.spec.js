@@ -33,13 +33,16 @@ function setArgs(token) {
   });
 }
 
-function runInvalidTokenTests(messageAssertion) {
+function runInvalidTokenTests(
+  messageAssertion,
+  statusAssertion = 401,
+) {
   test("should not call next()", () => {
     expect(next).not.toHaveBeenCalled();
   });
   
-  test("should send a 401 response", () => {
-    expect(res.statusCode).toEqual(401);
+  test(`should send a ${statusAssertion} response`, () => {
+    expect(res.statusCode).toEqual(statusAssertion);
   });
 
   test(`should send message ${messageAssertion}`, () => {
@@ -50,16 +53,26 @@ function runInvalidTokenTests(messageAssertion) {
 
 beforeAll(async () => {
   await tokenGenerator.init();
+});
 
+afterEach(() => {
+  nock.cleanAll();
+});
+
+function mockJwk(
+  responseBody = { keys: [tokenGenerator.jwk] },
+  responseStatus = 200,
+) {
   nock(options.issuer)
     .persist()
     .get("/.well-known/jwks.json")
-    .reply(200, { keys: [tokenGenerator.jwk] });
-});
+    .reply(responseStatus, responseBody);
+}
 
 describe("A request with a valid access token", () => {
   describe("with valid claims", () => {
     beforeEach(async () => {
+      mockJwk();
       const token = await tokenGenerator.createSignedJWT(claims());
       setArgs(token);
       await authorise(options)(req, res, next);
@@ -103,6 +116,7 @@ describe("A request with a valid access token", () => {
   ].forEach(({ key, value, error }) => {
     describe(`and an invalid ${key} claim`, () => {
       beforeEach(async () => {
+        mockJwk();
         const token = await tokenGenerator.createSignedJWT(claims({ [key]: value }));
         setArgs(token);
         await authorise(options)(req, res, next);
@@ -111,10 +125,52 @@ describe("A request with a valid access token", () => {
       runInvalidTokenTests(error);
     });
   });
+
+  describe("and an undefined jwk", () => {
+    beforeEach(async () => {
+      
+      const invalidJwk = {};
+      const token = await tokenGenerator.createSignedJWT(claims());
+      mockJwk({ keys: [invalidJwk] });
+      setArgs(token);
+      await authorise(options)(req, res, next);
+    });
+  
+    runInvalidTokenTests("no jwk found.");
+  });
+
+  describe("and an invalid signature", () => {
+    beforeEach(async () => {
+      
+      const token = await tokenGenerator.createSignedJWT(claims());
+      const invalidJwk = {
+        ...tokenGenerator.jwk,
+        n: `${tokenGenerator.jwk.n}12345`,
+      };
+      mockJwk({ keys: [invalidJwk] });
+      setArgs(token);
+      await authorise(options)(req, res, next);
+    });
+  
+    runInvalidTokenTests("invalid signature");
+  });
+
+  describe("and a failed request to fetch keys", () => {
+    beforeEach(async () => {
+      
+      const token = await tokenGenerator.createSignedJWT(claims());
+      mockJwk(undefined, 500);
+      setArgs(token);
+      await authorise(options)(req, res, next);
+    });
+  
+    runInvalidTokenTests("Request failed with status code 500", 500);
+  });
 });
 
 describe("A request with a null token", () => {
   beforeEach(async () => {
+    mockJwk();
     setArgs(null);
     await authorise(options)(req, res, next);
   });
@@ -124,6 +180,7 @@ describe("A request with a null token", () => {
 
 describe("A request with an invalid access token", () => {
   beforeEach(async () => {
+    mockJwk();
     setArgs("this.is.an.invalid.token");
     await authorise(options)(req, res, next);
   });
