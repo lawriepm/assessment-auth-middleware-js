@@ -9,6 +9,7 @@ export default class JwtAuthenticator {
     INVALID_TOKEN_USE_CLAIM: "jwt token_use invalid.",
     INVALID_PAYLOAD: "jwt payload or header invalid.",
     GENERAL_ERROR: "server error.",
+    NO_JWK: "no jwk found.",
   };
 
   constructor() {
@@ -58,6 +59,8 @@ export default class JwtAuthenticator {
     
     const keys = await this.#fetchKeys();
     const key = keys.find(({ kid: keyId }) => kid === keyId);
+    if (!key) throw new AuthenticationError(this.ERROR_MESSAGES.NO_JWK);
+
     const pem = jwkToPem(key);
 
     const options = {
@@ -86,7 +89,7 @@ export default class JwtAuthenticator {
       next();
     } catch (error) {
       const status = error.getStatus?.() || 500;
-      const message = error.getMessage?.() || this.ERROR_MESSAGES.GENERAL_ERROR;
+      const message = error.message || this.ERROR_MESSAGES.GENERAL_ERROR;
       res.status(status).send({ message });
     }
   }
