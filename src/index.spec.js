@@ -10,12 +10,14 @@ const options = {
   algorithms: "RS256"
 };
 const currentTime = Math.round(Date.now() / 1000);
-const claims = {
+const claims = (claimsOveride = {}) => ({
   sub: "foo",
   iss: options.issuer,
   aud: options.audience,
   exp: currentTime + 10,
-};
+  token_use: "access",
+  ...claimsOveride,
+});
 
 let res;
 let next;
@@ -31,28 +33,85 @@ beforeAll(async () => {
 });
 
 describe("A request with a valid access token", () => {
-  beforeEach(async () => {
-    const token = await tokenGenerator.createSignedJWT(claims);
-    res = createResponse();
-    next = jest.fn();
-    req = createRequest({
-      headers: {
-        authorizationinfo: token
-      }
+  describe("with valid claims", () => {
+    beforeEach(async () => {
+      const token = await tokenGenerator.createSignedJWT(claims());
+      res = createResponse();
+      next = jest.fn();
+      req = createRequest({
+        headers: {
+          authorizationinfo: token
+        }
+      });
+      await authorise(options)(req, res, next);
     });
-    await authorise(options)(req, res, next);
+
+    test("should add a user object containing the token claims to the request", () => {
+      expect(req).toHaveProperty("user", claims());
+    });
+
+    test("call next()", () => {
+      expect(next).toHaveBeenCalled();
+    });
   });
 
-  test("should add a user object containing the token claims to the request", () => {
-    expect(req).toHaveProperty("user", claims);
-  });
+  [
+    {
+      key: "iss",
+      value: "https:/test.com",
+      error: "jwt issuer invalid.",
+    },
+    {
+      key: "exp",
+      value: currentTime - 200,
+      error: "jwt expired",
+    },
+    {
+      key: "aud",
+      value: "testaudience",
+      error: "jwt audience invalid.",
+    },
+    {
+      key: "sub",
+      value: "bar",
+      error: "jwt subject invalid.",
+    },
+    {
+      key: "token_use",
+      value: "id",
+      error: "jwt token_use invalid.",
+    },
+  ].forEach(({ key, value, error }) => {
+    describe(`and an invalid ${key} claim`, () => {
+      beforeEach(async () => {
+        const token = await tokenGenerator.createSignedJWT(claims({ [key]: value }));
+        res = createResponse();
+        next = jest.fn();
+        req = createRequest({
+          headers: {
+            authorizationinfo: token
+          }
+        });
+        await authorise(options)(req, res, next);
+      });
 
-  test("call next()", () => {
-    expect(next).toHaveBeenCalled();
+      test("should not call next()", () => {
+        expect(next).not.toHaveBeenCalled();
+      });
+
+      test("should send a 401 response", () => {
+        expect(res.statusCode).toEqual(401);
+      });
+      
+      test(`should send message ${error}`, () => {
+        const { message } = res._getData();
+        expect(message).toEqual(error);
+      });
+    });
   });
 });
 
-describe("A request with an invalid access token", () => {
+describe("A request with a null token", () => {
   beforeEach(async () => {
     res = createResponse();
     next = jest.fn();
@@ -70,5 +129,36 @@ describe("A request with an invalid access token", () => {
   
   test("should send a 401 response", () => {
     expect(res.statusCode).toEqual(401);
+  });
+
+  test("should send message \"no jwt provided.\"", () => {
+    const { message } = res._getData();
+    expect(message).toEqual("no jwt provided.");
+  });
+});
+
+describe("A request with an invalid access token", () => {
+  beforeEach(async () => {
+    res = createResponse();
+    next = jest.fn();
+    req = createRequest({
+      headers: {
+        authorizationinfo: 'this.is.an.invalid.token'
+      }
+    });
+    await authorise(options)(req, res, next);
+  });
+
+  test("should not call next()", () => {
+    expect(next).not.toHaveBeenCalled();
+  });
+  
+  test("should send a 401 response", () => {
+    expect(res.statusCode).toEqual(401);
+  });
+
+  test("should send message \"jwt payload or header invalid.\"", () => {
+    const { message } = res._getData();
+    expect(message).toEqual("jwt payload or header invalid.");
   });
 });
