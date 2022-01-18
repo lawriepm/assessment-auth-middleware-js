@@ -10,10 +10,8 @@ class CustomError extends Error {
 }
 
 class AuthenticationError extends CustomError {
-  constructor() {
-    const STATUS_CODE = 401;
-    super(`${STATUS_CODE}: Unauthorised`, STATUS_CODE);
-    this.status = STATUS_CODE;
+  constructor(message) {
+    super(message, 401);
   }
 }
 
