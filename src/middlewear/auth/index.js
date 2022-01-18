@@ -4,8 +4,18 @@ import jwkToPem from "jwk-to-pem";
 import AuthenticationError from "./error";
 
 export default class JwtAuthenticator {
+  ERROR_MESSAGES = {
+    NO_TOKEN: "no jwt provided.",
+    INVALID_TOKEN_USE_CLAIM: "jwt token_use invalid.",
+    INVALID_PAYLOAD: "jwt payload or header invalid.",
+    GENERAL_ERROR: "server error.",
+  };
+
   constructor() {
     this.USER_POOL = "http://issuer.com"; // mock value for verifying claims real value may look like https://cognito-idp.us-east-1.amazonaws.com/<userpoolID>
+    this.APP_CLIENT_ID = "audience"; // mock value for verifying claims real value may look like the app client ID that was created in the Amazon Cognito user pool.
+    this.SUBJECT = "foo";
+    this.TOKEN_USE = "access";
   }
 
   async #fetchKeys() {
@@ -13,11 +23,24 @@ export default class JwtAuthenticator {
     return keys;
   }
 
+  #isTokenUseClaimValid({ token_use: tokenUse }) {
+    return tokenUse === this.TOKEN_USE;
+  }
+
+  // stops sensitive data such as APP_CLIENT_ID being exposed.
+  #formatClaimErrorMessage(message) {
+    return message.replace(/\sexpected:\s.*/i, "");
+  }
+
   #verifySignature(token, pem, options) {
     return new Promise((resolve, reject) => {
       jwt.verify(token, pem, options, (err, decodedToken) => {
         if (err) {
-          return reject(new AuthenticationError());
+          return reject(new AuthenticationError(this.#formatClaimErrorMessage(err.message)));
+        };
+ 
+        if (!this.#isTokenUseClaimValid(decodedToken)) {
+          return reject(new AuthenticationError(this.ERROR_MESSAGES.INVALID_TOKEN_USE_CLAIM));
         };
 
         resolve(decodedToken);
@@ -26,10 +49,10 @@ export default class JwtAuthenticator {
   }
 
   async #decodeToken(token) {
-    if (!token) throw new AuthenticationError();
+    if (!token) throw new AuthenticationError(this.ERROR_MESSAGES.NO_TOKEN);
     
     const decodedToken = jwt.decode(token, { complete: true });
-    if (!decodedToken) throw new AuthenticationError();
+    if (!decodedToken) throw new AuthenticationError(this.ERROR_MESSAGES.INVALID_PAYLOAD);
     
     const { header: { kid, alg }, payload } = decodedToken;
     
@@ -39,8 +62,10 @@ export default class JwtAuthenticator {
 
     const options = {
       algorithms: [alg],
-      issuer: payload.iss,
-      audience: payload.aud,
+      issuer: this.USER_POOL,
+      audience: this.APP_CLIENT_ID,
+      subject: this.SUBJECT,
+      token_use: this.TOKEN_USE,
       expiresIn: payload.exp,
     }
     
@@ -61,7 +86,8 @@ export default class JwtAuthenticator {
       next();
     } catch (error) {
       const status = error.getStatus?.() || 500;
-      res.status(status).send();
+      const message = error.getMessage?.() || this.ERROR_MESSAGES.GENERAL_ERROR;
+      res.status(status).send({ message });
     }
   }
 }
