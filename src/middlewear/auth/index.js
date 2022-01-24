@@ -68,7 +68,6 @@ export default class JwtAuthenticator {
       issuer: this.USER_POOL,
       audience: this.APP_CLIENT_ID,
       subject: this.SUBJECT,
-      token_use: this.TOKEN_USE,
       expiresIn: payload.exp,
     }
     
